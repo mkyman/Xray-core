@@ -387,15 +387,16 @@ func (b Bandwidth) Bps() (uint64, error) {
 
 type UdpHop struct {
 	PortList json.RawMessage `json:"port"`
-	Interval int64           `json:"interval"`
+	Interval *Int32Range     `json:"interval"`
 }
 
 type HysteriaConfig struct {
-	Version int32     `json:"version"`
-	Auth    string    `json:"auth"`
-	Up      Bandwidth `json:"up"`
-	Down    Bandwidth `json:"down"`
-	UdpHop  UdpHop    `json:"udphop"`
+	Version    int32     `json:"version"`
+	Auth       string    `json:"auth"`
+	Congestion string    `json:"congestion"`
+	Up         Bandwidth `json:"up"`
+	Down       Bandwidth `json:"down"`
+	UdpHop     UdpHop    `json:"udphop"`
 
 	InitStreamReceiveWindow     uint64 `json:"initStreamReceiveWindow"`
 	MaxStreamReceiveWindow      uint64 `json:"maxStreamReceiveWindow"`
@@ -410,6 +411,7 @@ func (c *HysteriaConfig) Build() (proto.Message, error) {
 	if c.Version != 2 {
 		return nil, errors.New("version != 2")
 	}
+
 	up, err := c.Up.Bps()
 	if err != nil {
 		return nil, err
@@ -418,9 +420,21 @@ func (c *HysteriaConfig) Build() (proto.Message, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	c.Congestion = strings.ToLower(c.Congestion)
+	if c.Congestion == "force-brutal" && up == 0 {
+		return nil, errors.New("force-brutal require up")
+	}
+
 	var hop *PortList
 	if err := json.Unmarshal(c.UdpHop.PortList, &hop); err != nil {
 		hop = &PortList{}
+	}
+
+	var inertvalMin, inertvalMax int64
+	if c.UdpHop.Interval != nil {
+		inertvalMin = int64(c.UdpHop.Interval.From)
+		inertvalMax = int64(c.UdpHop.Interval.To)
 	}
 
 	if up > 0 && up < 65536 {
@@ -429,7 +443,7 @@ func (c *HysteriaConfig) Build() (proto.Message, error) {
 	if down > 0 && down < 65536 {
 		return nil, errors.New("Down must be at least 65536 Bps")
 	}
-	if c.UdpHop.Interval != 0 && c.UdpHop.Interval < 5 {
+	if (inertvalMin != 0 && inertvalMin < 5) || (inertvalMax != 0 && inertvalMax < 5) {
 		return nil, errors.New("Interval must be at least 5")
 	}
 
@@ -455,10 +469,12 @@ func (c *HysteriaConfig) Build() (proto.Message, error) {
 	config := &hysteria.Config{}
 	config.Version = c.Version
 	config.Auth = c.Auth
+	config.Congestion = c.Congestion
 	config.Up = up
 	config.Down = down
 	config.Ports = hop.Build().Ports()
-	config.Interval = c.UdpHop.Interval
+	config.IntervalMin = inertvalMin
+	config.IntervalMax = inertvalMax
 	config.InitStreamReceiveWindow = c.InitStreamReceiveWindow
 	config.MaxStreamReceiveWindow = c.MaxStreamReceiveWindow
 	config.InitConnReceiveWindow = c.InitConnectionReceiveWindow
@@ -587,6 +603,9 @@ func (c *TLSConfig) Build() (proto.Message, error) {
 	}
 	serverName := c.ServerName
 	config.AllowInsecure = c.Insecure
+	if config.AllowInsecure {
+		errors.PrintDeprecatedFeatureWarning("allowInsecure", "pinnedPeerCertSha256")
+	}
 	if len(c.ServerName) > 0 {
 		config.ServerName = serverName
 	}
@@ -894,13 +913,13 @@ func (p TransportProtocol) Build() (string, error) {
 	case "kcp", "mkcp":
 		return "mkcp", nil
 	case "grpc":
-		errors.PrintDeprecatedFeatureWarning("gRPC transport (with unnecessary costs, etc.)", "XHTTP stream-up H2")
+		errors.PrintNonRemovalDeprecatedFeatureWarning("gRPC transport (with unnecessary costs, etc.)", "XHTTP stream-up H2")
 		return "grpc", nil
 	case "ws", "websocket":
-		errors.PrintDeprecatedFeatureWarning("WebSocket transport (with ALPN http/1.1, etc.)", "XHTTP H2 & H3")
+		errors.PrintNonRemovalDeprecatedFeatureWarning("WebSocket transport (with ALPN http/1.1, etc.)", "XHTTP H2 & H3")
 		return "websocket", nil
 	case "httpupgrade":
-		errors.PrintDeprecatedFeatureWarning("HTTPUpgrade transport (with ALPN http/1.1, etc.)", "XHTTP H2 & H3")
+		errors.PrintNonRemovalDeprecatedFeatureWarning("HTTPUpgrade transport (with ALPN http/1.1, etc.)", "XHTTP H2 & H3")
 		return "httpupgrade", nil
 	case "h2", "h3", "http":
 		return "", errors.PrintRemovedFeatureError("HTTP transport (without header padding, etc.)", "XHTTP stream-one H2 & H3")

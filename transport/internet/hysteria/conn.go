@@ -24,6 +24,7 @@ func (i *interConn) Write(b []byte) (int, error) {
 }
 
 func (i *interConn) Close() error {
+	i.stream.CancelRead(0)
 	return i.stream.Close()
 }
 
@@ -64,6 +65,9 @@ func (i *InterUdpConn) Read(p []byte) (int, error) {
 		return 0, io.EOF
 	}
 	n := copy(p, b)
+	if n != len(b) {
+		return 0, io.ErrShortBuffer
+	}
 	return n, nil
 }
 

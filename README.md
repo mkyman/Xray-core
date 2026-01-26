@@ -95,11 +95,12 @@
 ## GUI Clients
 
 - OpenWrt
-  - [PassWall](https://github.com/xiaorouji/openwrt-passwall), [PassWall 2](https://github.com/xiaorouji/openwrt-passwall2)
+  - [PassWall](https://github.com/Openwrt-Passwall/openwrt-passwall), [PassWall 2](https://github.com/Openwrt-Passwall/openwrt-passwall2)
   - [ShadowSocksR Plus+](https://github.com/fw876/helloworld)
   - [luci-app-xray](https://github.com/yichya/luci-app-xray) ([openwrt-xray](https://github.com/yichya/openwrt-xray))
 - Asuswrt-Merlin
   - [XRAYUI](https://github.com/DanielLavrushin/asuswrt-merlin-xrayui)
+  - [fancyss](https://github.com/hq450/fancyss)
 - Windows
   - [v2rayN](https://github.com/2dust/v2rayN)
   - [Furious](https://github.com/LorenEteval/Furious)
@@ -112,11 +113,11 @@
   - [SimpleXray](https://github.com/lhear/SimpleXray)
   - [AnyPortal](https://github.com/AnyPortal/AnyPortal)
 - iOS & macOS arm64 & tvOS
-  - [Happ](https://apps.apple.com/app/happ-proxy-utility/id6504287215) ([tvOS](https://apps.apple.com/us/app/happ-proxy-utility-for-tv/id6748297274))
+  - [Happ](https://apps.apple.com/app/happ-proxy-utility/id6504287215) | [Happ RU](https://apps.apple.com/ru/app/happ-proxy-utility-plus/id6746188973) | [Happ tvOS](https://apps.apple.com/us/app/happ-proxy-utility-for-tv/id6748297274)
   - [Streisand](https://apps.apple.com/app/streisand/id6450534064)
   - [OneXray](https://github.com/OneXray/OneXray)
 - macOS arm64 & x64
-  - [Happ](https://apps.apple.com/app/happ-proxy-utility/id6504287215)
+  - [Happ](https://apps.apple.com/app/happ-proxy-utility/id6504287215) | [Happ RU](https://apps.apple.com/ru/app/happ-proxy-utility-plus/id6746188973)
   - [V2rayU](https://github.com/yanue/V2rayU)
   - [V2RayXS](https://github.com/tzmax/V2RayXS)
   - [Furious](https://github.com/LorenEteval/Furious)
