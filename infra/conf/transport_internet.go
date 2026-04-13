@@ -36,6 +36,7 @@ import (
 	"github.com/xtls/xray-core/transport/internet/finalmask/xicmp"
 	"github.com/xtls/xray-core/transport/internet/httpupgrade"
 	"github.com/xtls/xray-core/transport/internet/hysteria"
+	"github.com/xtls/xray-core/transport/internet/hysteria/congestion/bbr"
 	"github.com/xtls/xray-core/transport/internet/kcp"
 	"github.com/xtls/xray-core/transport/internet/reality"
 	"github.com/xtls/xray-core/transport/internet/splithttp"
@@ -630,6 +631,7 @@ func (c *TLSCertConfig) Build() (*tls.Certificate, error) {
 type QuicParamsConfig struct {
 	Congestion                  string    `json:"congestion"`
 	Debug                       bool      `json:"debug"`
+	BbrProfile                  string    `json:"bbrProfile"`
 	BrutalUp                    Bandwidth `json:"brutalUp"`
 	BrutalDown                  Bandwidth `json:"brutalDown"`
 	UdpHop                      UdpHop    `json:"udpHop"`
@@ -1663,16 +1665,30 @@ func (c *Sudoku) Build() (proto.Message, error) {
 }
 
 type Xdns struct {
-	Domain string `json:"domain"`
+	Domain json.RawMessage `json:"domain"`
+
+	Domains   []string `json:"domains"`
+	Resolvers []string `json:"resolvers"`
 }
 
 func (c *Xdns) Build() (proto.Message, error) {
-	if c.Domain == "" {
-		return nil, errors.New("empty domain")
+	if c.Domain != nil {
+		return nil, errors.PrintRemovedFeatureError("domain", "domains(server) & resolvers(client)")
+	}
+
+	if len(c.Domains) == 0 && len(c.Resolvers) == 0 {
+		return nil, errors.New("empty domains & empty resolvers")
+	}
+
+	for _, r := range c.Resolvers {
+		if !strings.Contains(r, "+udp://") {
+			return nil, errors.New("invalid resolver ", r)
+		}
 	}
 
 	return &xdns.Config{
-		Domain: c.Domain,
+		Domains:   c.Domains,
+		Resolvers: c.Resolvers,
 	}, nil
 }
 
@@ -1897,6 +1913,16 @@ func (c *StreamConfig) Build() (*internet.StreamConfig, error) {
 			config.Udpmasks = append(config.Udpmasks, serial.ToTypedMessage(u))
 		}
 		if c.FinalMask.QuicParams != nil {
+			profile := strings.ToLower(c.FinalMask.QuicParams.BbrProfile)
+			switch profile {
+			case "", string(bbr.ProfileConservative), string(bbr.ProfileStandard), string(bbr.ProfileAggressive):
+				if profile == "" {
+					profile = string(bbr.ProfileStandard)
+				}
+			default:
+				return nil, errors.New("unknown bbr profile")
+			}
+
 			up, err := c.FinalMask.QuicParams.BrutalUp.Bps()
 			if err != nil {
 				return nil, err
@@ -1968,6 +1994,7 @@ func (c *StreamConfig) Build() (*internet.StreamConfig, error) {
 
 			config.QuicParams = &internet.QuicParams{
 				Congestion: c.FinalMask.QuicParams.Congestion,
+				BbrProfile: profile,
 				BrutalUp:   up,
 				BrutalDown: down,
 				UdpHop: &internet.UdpHop{
